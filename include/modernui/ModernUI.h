@@ -35,13 +35,15 @@ public:
 
   int32_t getX() const;
   int32_t getY() const;
+  void setPosition(int32_t x, int32_t y);
+  
   int32_t getWidth() const;
   int32_t getHeight() const;
+  void setSize(int32_t width, int32_t height);
 
   float getColorR() const;
   float getColorG() const;
   float getColorB() const;
-
   void setColor(float r, float g, float b);
 
 private:

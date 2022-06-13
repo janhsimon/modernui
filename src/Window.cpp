@@ -29,6 +29,12 @@ int32_t Window::getY() const
   return d->y;
 }
 
+void Window::setPosition(int32_t x, int32_t y)
+{
+  d->x = x;
+  d->y = y;
+}
+
 int32_t Window::getWidth() const
 {
   return d->width;
@@ -37,6 +43,12 @@ int32_t Window::getWidth() const
 int32_t Window::getHeight() const
 {
   return d->height;
+}
+
+void Window::setSize(int32_t width, int32_t height)
+{
+  d->width = width;
+  d->height = height;
 }
 
 float Window::getColorR() const

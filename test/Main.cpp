@@ -156,8 +156,8 @@ int main()
 
   // Set up a basic interface
   ModernUI::Context context;
+  ModernUI::Window win = ModernUI::Window(0, 0, 10, 10);
   {
-    ModernUI::Window win(10, 10, windowWidth / 2, windowHeight / 2);
     win.setColor(foregroundColor.r, foregroundColor.g, foregroundColor.b);
     context.addWindow(win);
   }
@@ -190,25 +190,35 @@ int main()
   // Main loop
   while (!glfwWindowShouldClose(window))
   {
-    context.processFrame();
-
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    // Update the vertex buffer
+    // Update
     {
-      const GLsizeiptr totalSize = static_cast<GLsizeiptr>(sizeof(ModernUI::Vertex) * context.getNumVertices());
-      const void* vertexData = static_cast<const void*>(context.getVertices());
-      glBufferData(GL_ARRAY_BUFFER, totalSize, vertexData, GL_DYNAMIC_DRAW);
+      double mouseX, mouseY;
+      glfwGetCursorPos(window, &mouseX, &mouseY);
+      win.setPosition(static_cast<int>(mouseX), static_cast<int>(mouseY));
     }
 
-    // Draw the vertex buffer
+    // Render
     {
-      const GLsizei numVertices = static_cast<GLsizei>(context.getNumVertices());
-      glDrawArrays(GL_TRIANGLE_STRIP, 0, numVertices);
-    }
+      context.processFrame();
 
-    glfwSwapBuffers(window);
-    glfwPollEvents();
+      glClear(GL_COLOR_BUFFER_BIT);
+
+      // Update the vertex buffer
+      {
+        const GLsizeiptr totalSize = static_cast<GLsizeiptr>(sizeof(ModernUI::Vertex) * context.getNumVertices());
+        const void* vertexData = static_cast<const void*>(context.getVertices());
+        glBufferData(GL_ARRAY_BUFFER, totalSize, vertexData, GL_DYNAMIC_DRAW);
+      }
+
+      // Draw the vertex buffer
+      {
+        const GLsizei numVertices = static_cast<GLsizei>(context.getNumVertices());
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, numVertices);
+      }
+
+      glfwSwapBuffers(window);
+      glfwPollEvents();
+    }
   }
 
   glfwTerminate();

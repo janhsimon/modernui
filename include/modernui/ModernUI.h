@@ -1,28 +1,53 @@
 #pragma once
 
 #include <cstdint>
+#include <cstdlib>
+#include <string>
 
 namespace ModernUI
 {
-struct Vertex final
+struct ColorVertex final
 {
-  int32_t x, y;
+  float x, y;
   float r, g, b;
 
-  Vertex(int32_t x, int32_t y, float r, float g, float b);
+  ColorVertex(float x, float y, float r, float g, float b);
+};
+
+struct TextureVertex final
+{
+  float x, y;
+  float u, v;
+
+  TextureVertex(float x, float y, float u, float v);
 };
 
 class Context final
 {
 public:
+  enum class Error
+  {
+    Success,
+    FontFileMissing,
+    FontBakeFailed
+  };
+
   Context();
 
+  Error getError() const;
+
   void addWindow(const class Window& window);
+  void addButton(const class Button& button);
 
   void processFrame();
 
-  size_t getNumVertices() const;
-  const Vertex* getVertices() const;
+  size_t getNumColorVertices() const;
+  const ColorVertex* getColorVertices() const;
+
+  size_t getNumTextureVertices() const;
+  const TextureVertex* getTextureVertices() const;
+
+  unsigned char* getFontTextureData() const;
 
 private:
   struct ContextData* d;
@@ -36,7 +61,7 @@ public:
   int32_t getX() const;
   int32_t getY() const;
   void setPosition(int32_t x, int32_t y);
-  
+
   int32_t getWidth() const;
   int32_t getHeight() const;
   void setSize(int32_t width, int32_t height);
@@ -48,5 +73,25 @@ public:
 
 private:
   struct WindowData* d;
+};
+
+class Button final
+{
+public:
+  Button(const std::string& text, int32_t x, int32_t y, int32_t width, int32_t height);
+
+  std::string getText() const;
+  void setText(const std::string& text);
+
+  int32_t getX() const;
+  int32_t getY() const;
+  void setPosition(int32_t x, int32_t y);
+
+  int32_t getWidth() const;
+  int32_t getHeight() const;
+  void setSize(int32_t width, int32_t height);
+
+private:
+  struct ButtonData* d;
 };
 } // namespace ModernUI

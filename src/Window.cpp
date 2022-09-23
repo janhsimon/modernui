@@ -11,11 +11,8 @@ struct WindowData
 
 Window::Window(int32_t x, int32_t y, int32_t width, int32_t height) : d(new WindowData)
 {
-  d->x = x;
-  d->y = y;
-  d->width = width;
-  d->height = height;
-
+  setPosition(x, y);
+  setSize(width, height);
   setColor(1.0f, 1.0f, 1.0f);
 }
 

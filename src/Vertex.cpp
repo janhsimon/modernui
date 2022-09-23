@@ -2,7 +2,11 @@
 
 namespace ModernUI
 {
-Vertex::Vertex(int32_t x, int32_t y, float r, float g, float b) : x(x), y(y), r(r), g(g), b(b)
+ColorVertex::ColorVertex(float x, float y, float r, float g, float b) : x(x), y(y), r(r), g(g), b(b)
+{
+}
+
+TextureVertex::TextureVertex(float x, float y, float u, float v) : x(x), y(y), u(u), v(v)
 {
 }
 } // namespace ModernUI

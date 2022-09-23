@@ -1,4 +1,4 @@
-#include <glad/gl.h>
+#include <glad/glad.h>
 #include <glfw/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -40,16 +40,20 @@ int main()
     }
 
     glfwMakeContextCurrent(window);
-    if (gladLoadGL(glfwGetProcAddress) == 0)
+    if (gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress)) == 0)
     {
       std::cerr << "Failed to load OpenGL";
       return EXIT_FAILURE;
     }
 
     glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a);
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   }
 
-  // Set up a shader program
+  // Set up a color shader program
+  GLuint colorShaderProgram;
   {
     // Compile the vertex shader
     GLuint vertexShader;
@@ -76,7 +80,7 @@ int main()
       {
         GLchar infoLog[shaderLogSize];
         glGetShaderInfoLog(vertexShader, shaderLogSize, nullptr, infoLog);
-        std::cerr << "Failed to compile vertex shader:\n" << infoLog;
+        std::cerr << "Failed to compile color vertex shader:\n" << infoLog;
         glfwTerminate();
         return EXIT_FAILURE;
       }
@@ -92,7 +96,8 @@ int main()
                                 out vec4 outColor;
                                 void main()
                                 {
-                                  outColor = vec4(color, 1.0);
+                                  outColor.rgb = color;
+                                  outColor.a = 1.0;
                                 })";
 
       glShaderSource(fragmentShader, 1, &source, nullptr);
@@ -104,45 +109,44 @@ int main()
       {
         GLchar infoLog[shaderLogSize];
         glGetShaderInfoLog(fragmentShader, shaderLogSize, nullptr, infoLog);
-        std::cerr << "Failed to compile fragment shader:\n" << infoLog;
+        std::cerr << "Failed to compile color fragment shader:\n" << infoLog;
         glfwTerminate();
         return EXIT_FAILURE;
       }
     }
 
     // Link and use the shader program
-    GLuint shaderProgram;
     {
-      shaderProgram = glCreateProgram();
+      colorShaderProgram = glCreateProgram();
 
-      glAttachShader(shaderProgram, vertexShader);
-      glAttachShader(shaderProgram, fragmentShader);
+      glAttachShader(colorShaderProgram, vertexShader);
+      glAttachShader(colorShaderProgram, fragmentShader);
 
-      glLinkProgram(shaderProgram);
+      glLinkProgram(colorShaderProgram);
 
       GLint success;
-      glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+      glGetProgramiv(colorShaderProgram, GL_LINK_STATUS, &success);
       if (!success)
       {
         GLchar infoLog[shaderLogSize];
-        glGetProgramInfoLog(shaderProgram, shaderLogSize, nullptr, infoLog);
-        std::cerr << "Failed to link mesh shader program:\n" << infoLog;
+        glGetProgramInfoLog(colorShaderProgram, shaderLogSize, nullptr, infoLog);
+        std::cerr << "Failed to link color shader program:\n" << infoLog;
         glfwTerminate();
         return EXIT_FAILURE;
       }
 
       glDeleteShader(vertexShader);
       glDeleteShader(fragmentShader);
-
-      glUseProgram(shaderProgram);
     }
+
+    glUseProgram(colorShaderProgram);
 
     // Locate and set the projection matrix uniform
     {
-      const GLint projectionMatrixUniformLocation = glGetUniformLocation(shaderProgram, "projection");
-      if (projectionMatrixUniformLocation < 0)
+      const GLint uniformLocation = glGetUniformLocation(colorShaderProgram, "projection");
+      if (uniformLocation < 0)
       {
-        std::cerr << "Failed to get projection matrix uniform location in shader program";
+        std::cerr << "Failed to get projection matrix uniform location in color shader program";
         glfwTerminate();
         return EXIT_FAILURE;
       }
@@ -150,41 +154,203 @@ int main()
       constexpr float w = static_cast<float>(windowWidth);
       constexpr float h = static_cast<float>(windowHeight);
       const glm::mat4 projectionMatrix = glm::ortho(0.0f, w, h, 0.0f, -1.0f, 1.0f);
-      glUniformMatrix4fv(projectionMatrixUniformLocation, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+      glUniformMatrix4fv(uniformLocation, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+    }
+  }
+
+  // Set up a texture shader program
+  GLuint textureShaderProgram;
+  {
+    // Compile the vertex shader
+    GLuint vertexShader;
+    {
+      vertexShader = glCreateShader(GL_VERTEX_SHADER);
+
+      const GLchar* source = R"(#version 330 core
+                                uniform mat4 projection;
+                                layout(location = 0) in vec2 inPosition;
+                                layout(location = 1) in vec2 inUv;
+                                out vec2 uv;
+                                void main()
+                                {
+                                  uv = inUv;
+                                  gl_Position = projection * vec4(inPosition, 0.0, 1.0);
+                                })";
+
+      glShaderSource(vertexShader, 1, &source, nullptr);
+      glCompileShader(vertexShader);
+
+      GLint success;
+      glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+      if (!success)
+      {
+        GLchar infoLog[shaderLogSize];
+        glGetShaderInfoLog(vertexShader, shaderLogSize, nullptr, infoLog);
+        std::cerr << "Failed to compile texture vertex shader:\n" << infoLog;
+        glfwTerminate();
+        return EXIT_FAILURE;
+      }
+    }
+
+    // Compile the fragment shader
+    GLuint fragmentShader;
+    {
+      fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+
+      const GLchar* source = R"(#version 330 core
+                                uniform sampler2D image;
+                                in vec2 uv;
+                                out vec4 outColor;
+                                void main()
+                                {
+                                  outColor.rgb = vec3(0.3);
+                                  outColor.a = texture(image, uv).r;
+                                })";
+
+      glShaderSource(fragmentShader, 1, &source, nullptr);
+      glCompileShader(fragmentShader);
+
+      GLint success;
+      glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+      if (!success)
+      {
+        GLchar infoLog[shaderLogSize];
+        glGetShaderInfoLog(fragmentShader, shaderLogSize, nullptr, infoLog);
+        std::cerr << "Failed to compile texture fragment shader:\n" << infoLog;
+        glfwTerminate();
+        return EXIT_FAILURE;
+      }
+    }
+
+    // Link and use the shader program
+    {
+      textureShaderProgram = glCreateProgram();
+
+      glAttachShader(textureShaderProgram, vertexShader);
+      glAttachShader(textureShaderProgram, fragmentShader);
+
+      glLinkProgram(textureShaderProgram);
+
+      GLint success;
+      glGetProgramiv(textureShaderProgram, GL_LINK_STATUS, &success);
+      if (!success)
+      {
+        GLchar infoLog[shaderLogSize];
+        glGetProgramInfoLog(textureShaderProgram, shaderLogSize, nullptr, infoLog);
+        std::cerr << "Failed to link texture shader program:\n" << infoLog;
+        glfwTerminate();
+        return EXIT_FAILURE;
+      }
+
+      glDeleteShader(vertexShader);
+      glDeleteShader(fragmentShader);
+    }
+
+    glUseProgram(textureShaderProgram);
+
+    // Locate and set the projection matrix uniform
+    {
+      const GLint uniformLocation = glGetUniformLocation(textureShaderProgram, "projection");
+      if (uniformLocation < 0)
+      {
+        std::cerr << "Failed to get projection matrix uniform location in texture shader program";
+        glfwTerminate();
+        return EXIT_FAILURE;
+      }
+
+      constexpr float w = static_cast<float>(windowWidth);
+      constexpr float h = static_cast<float>(windowHeight);
+      const glm::mat4 projectionMatrix = glm::ortho(0.0f, w, h, 0.0f, -1.0f, 1.0f);
+      glUniformMatrix4fv(uniformLocation, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+    }
+
+    // Locate and set the image sampler uniform
+    {
+      const GLint uniformLocation = glGetUniformLocation(textureShaderProgram, "image");
+      if (uniformLocation < 0)
+      {
+        std::cerr << "Failed to get image sampler uniform location in texture shader program";
+        glfwTerminate();
+        return EXIT_FAILURE;
+      }
+
+      glUniform1i(uniformLocation, 0);
     }
   }
 
   // Set up a basic interface
   ModernUI::Context context;
-  ModernUI::Window win = ModernUI::Window(0, 0, 10, 10);
+  if (context.getError() == ModernUI::Context::Error::FontFileMissing)
   {
-    win.setColor(foregroundColor.r, foregroundColor.g, foregroundColor.b);
-    context.addWindow(win);
+    std::cerr << "Failed to open font file for interface";
+    glfwTerminate();
+    return EXIT_FAILURE;
+  }
+  else if (context.getError() == ModernUI::Context::Error::FontBakeFailed)
+  {
+    std::cerr << "Failed to bake font glyphs for interface";
+    glfwTerminate();
+    return EXIT_FAILURE;
+  }
+  
+  ModernUI::Window win = ModernUI::Window(0, 0, 100, 100);
+  win.setColor(foregroundColor.r, foregroundColor.g, foregroundColor.b);
+  context.addWindow(win);
+
+  ModernUI::Button btn = ModernUI::Button("Open...", 10, 10, 150, 30);
+  context.addButton(btn);
+
+  // Generate and fill a font texture for the interface
+  GLuint texture;
+  {
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, 512, 512, 0, GL_RED, GL_UNSIGNED_BYTE, context.getFontTextureData());
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   }
 
-  // Create and bind a vertex array
+  // Create two vertex arrays and buffers
+  GLuint vertexArrays[2];
+  GLuint vertexBuffers[2];
   {
-    GLuint vertexArray;
-    glGenVertexArrays(1, &vertexArray);
-    glBindVertexArray(vertexArray);
+    glGenVertexArrays(2, vertexArrays);
+    glGenBuffers(2, vertexBuffers);
   }
 
-  // Create and bind a vertex buffer
+  // Apply the vertex definition for the color vertex buffer
   {
-    GLuint uiVertexBuffer;
-    glGenBuffers(1, &uiVertexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, uiVertexBuffer);
-  }
+    glBindVertexArray(vertexArrays[0]);
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffers[0]);
 
-  // Apply the vertex definition
-  {
-    constexpr GLsizei vertexSize = static_cast<GLsizei>(sizeof(ModernUI::Vertex));
+    constexpr GLsizei vertexSize = static_cast<GLsizei>(sizeof(ModernUI::ColorVertex));
 
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_INT, GL_FALSE, vertexSize, reinterpret_cast<void*>(offsetof(ModernUI::Vertex, x)));
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, vertexSize,
+                          reinterpret_cast<void*>(offsetof(ModernUI::ColorVertex, x)));
 
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(offsetof(ModernUI::Vertex, r)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, vertexSize,
+                          reinterpret_cast<void*>(offsetof(ModernUI::ColorVertex, r)));
+  }
+
+  // Apply the vertex definition for the texture vertex buffer
+  {
+    glBindVertexArray(vertexArrays[1]);
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffers[1]);
+
+    constexpr GLsizei vertexSize = static_cast<GLsizei>(sizeof(ModernUI::TextureVertex));
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, vertexSize,
+                          reinterpret_cast<void*>(offsetof(ModernUI::TextureVertex, x)));
+
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, vertexSize,
+                          reinterpret_cast<void*>(offsetof(ModernUI::TextureVertex, u)));
   }
 
   // Main loop
@@ -203,17 +369,50 @@ int main()
 
       glClear(GL_COLOR_BUFFER_BIT);
 
-      // Update the vertex buffer
+      // Draw color vertices
       {
-        const GLsizeiptr totalSize = static_cast<GLsizeiptr>(sizeof(ModernUI::Vertex) * context.getNumVertices());
-        const void* vertexData = static_cast<const void*>(context.getVertices());
-        glBufferData(GL_ARRAY_BUFFER, totalSize, vertexData, GL_DYNAMIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffers[0]);
+
+        // Update the color vertex buffer
+        {
+          const GLsizeiptr totalSize =
+            static_cast<GLsizeiptr>(sizeof(ModernUI::ColorVertex) * context.getNumColorVertices());
+          const void* vertexData = static_cast<const void*>(context.getColorVertices());
+          glBufferData(GL_ARRAY_BUFFER, totalSize, vertexData, GL_DYNAMIC_DRAW);
+        }
+
+        glBindVertexArray(vertexArrays[0]);
+        glUseProgram(colorShaderProgram);
+
+        // Draw the color vertex buffer
+        {
+          const GLsizei numVertices = static_cast<GLsizei>(context.getNumColorVertices());
+          glDrawArrays(GL_TRIANGLES, 0, numVertices);
+        }
       }
 
-      // Draw the vertex buffer
+      // Draw texture vertices
       {
-        const GLsizei numVertices = static_cast<GLsizei>(context.getNumVertices());
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, numVertices);
+        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffers[1]);
+
+        // Update the texture vertex buffer
+        {
+          const GLsizeiptr totalSize =
+            static_cast<GLsizeiptr>(sizeof(ModernUI::TextureVertex) * context.getNumTextureVertices());
+          const void* vertexData = static_cast<const void*>(context.getTextureVertices());
+          glBufferData(GL_ARRAY_BUFFER, totalSize, vertexData, GL_DYNAMIC_DRAW);
+        }
+
+        glBindVertexArray(vertexArrays[1]);
+        glUseProgram(textureShaderProgram);
+
+        glBindTexture(GL_TEXTURE_2D, texture);
+
+        // Draw the texture vertex buffer
+        {
+          const GLsizei numVertices = static_cast<GLsizei>(context.getNumTextureVertices());
+          glDrawArrays(GL_TRIANGLES, 0, numVertices);
+        }
       }
 
       glfwSwapBuffers(window);

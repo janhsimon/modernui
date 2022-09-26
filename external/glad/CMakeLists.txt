@@ -5,4 +5,6 @@ target_include_directories(${TARGET_NAME} INTERFACE include)
 
 if(APPLE)
   set_target_properties(${TARGET_NAME} PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_LIST_DIR}/lib/mac/libglad.a)
+elseif(WIN32)
+  set_target_properties(${TARGET_NAME} PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_LIST_DIR}/lib/win/glad.lib)
 endif()

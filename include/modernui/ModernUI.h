@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <memory>
 #include <string>
 
 namespace ModernUI
@@ -33,6 +34,7 @@ public:
   };
 
   Context();
+  ~Context();
 
   Error getError() const;
 
@@ -50,13 +52,15 @@ public:
   unsigned char* getFontTextureData() const;
 
 private:
-  struct ContextData* d;
+  struct Data;
+  std::unique_ptr<Data> d;
 };
 
 class Window final
 {
 public:
   Window(int32_t x, int32_t y, int32_t width, int32_t height);
+  ~Window();
 
   int32_t getX() const;
   int32_t getY() const;
@@ -72,13 +76,15 @@ public:
   void setColor(float r, float g, float b);
 
 private:
-  struct WindowData* d;
+  struct Data;
+  std::unique_ptr<Data> d;
 };
 
 class Button final
 {
 public:
   Button(const std::string& text, int32_t x, int32_t y, int32_t width, int32_t height);
+  ~Button();
 
   std::string getText() const;
   void setText(const std::string& text);
@@ -92,6 +98,7 @@ public:
   void setSize(int32_t width, int32_t height);
 
 private:
-  struct ButtonData* d;
+  struct Data;
+  std::unique_ptr<Data> d;
 };
 } // namespace ModernUI

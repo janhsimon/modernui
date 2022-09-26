@@ -2,19 +2,21 @@
 
 namespace ModernUI
 {
-struct WindowData
+struct Window::Data final
 {
   int32_t x, y;
   int32_t width, height;
   float colorR, colorG, colorB;
 };
 
-Window::Window(int32_t x, int32_t y, int32_t width, int32_t height) : d(new WindowData)
+Window::Window(int32_t x, int32_t y, int32_t width, int32_t height) : d(new Data)
 {
   setPosition(x, y);
   setSize(width, height);
   setColor(1.0f, 1.0f, 1.0f);
 }
+
+Window::~Window() = default;
 
 int32_t Window::getX() const
 {

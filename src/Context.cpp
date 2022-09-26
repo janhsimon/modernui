@@ -9,7 +9,7 @@
 
 namespace ModernUI
 {
-struct ContextData
+struct Context::Data final
 {
   Context::Error error;
 
@@ -23,19 +23,20 @@ struct ContextData
   stbtt_bakedchar fontCharacters[96];
 };
 
-Context::Context() : d(new ContextData)
+Context::Context() : d(new Data)
 {
   d->error = Error::Success;
 
-  FILE* file = fopen("Arial.ttf", "rb");
-  if (!file)
+  FILE* file = nullptr;
+  if (fopen_s(&file, "C:\\Users\\janhs\\dev\\modernui-build\\src\\Debug\\Arial.ttf", "rb") != 0)
   {
     d->error = Error::FontFileMissing;
     return;
   }
 
-  unsigned char ttfBuffer[1 << 20];
-  fread(ttfBuffer, 1, 1 << 20, file);
+  constexpr size_t bufferSize = 1u << 20u;
+  unsigned char* ttfBuffer = new unsigned char[bufferSize];
+  fread(ttfBuffer, 1, bufferSize, file);
   fclose(file);
 
   if (!stbtt_BakeFontBitmap(ttfBuffer, 0, 32.0f, d->fontBitmap, 512, 512, 32, 96, d->fontCharacters))
@@ -43,7 +44,12 @@ Context::Context() : d(new ContextData)
     d->error = Error::FontBakeFailed;
     return;
   }
+
+  delete[] ttfBuffer;
+  ttfBuffer = nullptr;
 }
+
+Context::~Context() = default;
 
 Context::Error Context::getError() const
 {
@@ -67,10 +73,10 @@ void Context::processFrame()
 
   for (const Window* window : d->windows)
   {
-    const float x = window->getX();
-    const float y = window->getY();
-    const float w = window->getWidth();
-    const float h = window->getHeight();
+    const float x = static_cast<float>(window->getX());
+    const float y = static_cast<float>(window->getY());
+    const float w = static_cast<float>(window->getWidth());
+    const float h = static_cast<float>(window->getHeight());
 
     const float r = window->getColorR();
     const float g = window->getColorG();
@@ -91,10 +97,10 @@ void Context::processFrame()
   {
     // Draw the box
     {
-      const float x = button->getX();
-      const float y = button->getY();
-      const float w = button->getWidth();
-      const float h = button->getHeight();
+      const float x = static_cast<float>(button->getX());
+      const float y = static_cast<float>(button->getY());
+      const float w = static_cast<float>(button->getWidth());
+      const float h = static_cast<float>(button->getHeight());
 
       const float r = 1.0f;
       const float g = 1.0f;

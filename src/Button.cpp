@@ -2,19 +2,21 @@
 
 namespace ModernUI
 {
-struct ButtonData
+struct Button::Data final
 {
   std::string text;
   int32_t x, y;
   int32_t width, height;
 };
 
-Button::Button(const std::string& text, int32_t x, int32_t y, int32_t width, int32_t height) : d(new ButtonData)
+Button::Button(const std::string& text, int32_t x, int32_t y, int32_t width, int32_t height) : d(new Data)
 {
   setText(text);
   setPosition(x, y);
   setSize(width, height);
 }
+
+Button::~Button() = default;
 
 std::string Button::getText() const
 {
